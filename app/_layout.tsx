@@ -19,7 +19,12 @@ function RootLayoutNav() {
   }, []);
 
   return (
-    <PaperProvider theme={theme}>
+    <PaperProvider 
+      theme={theme}
+      settings={{
+        rippleEffectEnabled: true,
+      }}
+    >
       <Slot />
     </PaperProvider>
   );

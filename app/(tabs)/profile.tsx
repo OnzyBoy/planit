@@ -4,6 +4,9 @@ import { router } from 'expo-router';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 
+const moonIcon = require('../../assets/images/moonicon.png');
+const sunIcon = require('../../assets/images/sunicon.png');
+
 export default function ProfileScreen() {
   const { theme, isDark, toggleTheme, setSystemTheme } = useTheme();
   const { user, signOut } = useAuth();
@@ -33,8 +36,13 @@ export default function ProfileScreen() {
         <List.Section>
           <List.Subheader>Appearance</List.Subheader>
           <List.Item
-            title="Dark Mode"
-            left={props => <List.Icon {...props} icon="moon" />}
+            title=""
+            left={() => (
+              <View style={styles.iconContainer}>
+                <Image source={isDark ? sunIcon : moonIcon} style={styles.icon} />
+                <Text style={[styles.darkModeText, { color: theme.colors.onSurface }]}>Dark Mode</Text>
+              </View>
+            )}
             right={() => (
               <Switch
                 value={isDark}
@@ -83,5 +91,17 @@ const styles = StyleSheet.create({
   section: {
     borderRadius: 12,
     marginBottom: 16,
+  },
+  iconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  icon: {
+    width: 24,
+    height: 24,
+    marginRight: 8,
+  },
+  darkModeText: {
+    fontSize: 16,
   },
 });

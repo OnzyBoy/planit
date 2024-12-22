@@ -25,7 +25,7 @@ export default function TasksScreen() {
     updateTask,
     deleteTask,
     toggleTaskCompletion,
-  } = useTasks();
+  } = useTasks({ completed: false });
 
   if (loading) {
     return (
@@ -114,6 +114,14 @@ export default function TasksScreen() {
           showsHorizontalScrollIndicator={false}
           style={styles.filterList}
         />
+        
+        <Chip
+          selected={filter.completed === false}
+          onPress={() => setFilter({ ...filter, completed: !filter.completed })}
+          style={styles.filterChip}
+        >
+          Hide completed
+        </Chip>
       </View>
 
       <TaskList
@@ -137,7 +145,7 @@ export default function TasksScreen() {
         }}
       />
 
-<TaskForm
+      <TaskForm
         visible={modalVisible}
         onDismiss={() => {
           setModalVisible(false);

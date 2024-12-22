@@ -34,8 +34,8 @@ export interface SubTask {
 
 export interface TaskFilter {
   [x: string]: any;
-  category?: TaskCategory;
+  category?: string | TaskCategory;
   priority?: string;
   completed?: boolean;
-  search?: string;
+  searchQuery?: string;
 }

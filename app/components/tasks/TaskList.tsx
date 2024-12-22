@@ -2,9 +2,10 @@ import { View, StyleSheet, FlatList, Pressable, Animated } from 'react-native';
 import { Text, Card, IconButton, Chip, Portal, Dialog, Button, Checkbox, MD2Colors } from 'react-native-paper';
 import { useTheme } from '../../hooks/useTheme';
 import { Task } from '../../types';
-import { getPriorityColor } from '../../utils/taskUtils';
+import { getPriorityColor, isOverdue } from '../../utils/taskUtils';
 import { useState, useEffect } from 'react';
 import React from 'react';
+import theme from 'react-native-elements/dist/config/theme';
 
 const sortByDueDate = (tasks: Task[]) => {
   return tasks.sort((a, b) => {
@@ -45,6 +46,7 @@ export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask,
   const TaskItem = ({ task }: { task: Task }) => {
     const backgroundColorAnim = React.useRef(new Animated.Value(0)).current;
     const checkmarkOpacity = React.useRef(new Animated.Value(0)).current;
+    const isTaskOverdue = isOverdue(task);
 
     useEffect(() => {
       if (task.completed) {
@@ -93,7 +95,7 @@ export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask,
         >
           <Card.Content style={styles.taskContent}>
             <View style={styles.taskHeader}>
-              <View style={styles.titleContainer}>
+              <View style={styles.taskTitleContainer}>
                 <Checkbox.Android
                   status={task.completed ? 'checked' : 'unchecked'}
                   onPress={() => setTaskToComplete(task)}
@@ -104,9 +106,19 @@ export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask,
                     styles.taskTitle,
                     { color: theme.colors.onSurface },
                   ]}
+                  numberOfLines={1}
                 >
                   {task.title}
                 </Text>
+                {isTaskOverdue && !task.completed && (
+                  <Chip 
+                    style={styles.overdueChip} 
+                    textStyle={{ color: theme.colors.error }}
+                    icon="alert-circle"
+                  >
+                    Overdue
+                  </Chip>
+                )}
                 {task.completed && (
                   <Animated.View style={[styles.checkmark, { opacity: checkmarkOpacity }]}>
                     <IconButton
@@ -240,6 +252,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  taskTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   taskTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -282,13 +299,11 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     fontWeight: '500',
   },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    position: 'relative',
-  },
   checkmark: {
+    position: 'absolute',
+    right: 8,
+  },
+  overdueChip: {
     position: 'absolute',
     right: 8,
   },

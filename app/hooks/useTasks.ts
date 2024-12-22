@@ -58,15 +58,30 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
 
     const task: Omit<Task, 'id'> = {
       ...taskData,
-      completed: false, // Initialize completed state
-      dueDate: taskData.dueDate || undefined,
+      completed: false,
+      dueDate: taskData.dueDate instanceof Date ? taskData.dueDate.getTime() : taskData.dueDate,
       userId: user.uid,
       createdAt: now,
       updatedAt: now,
     };
 
-    await set(newTaskRef, task);
-    return { ...task, id: newTaskRef.key! };
+    // Remove any undefined values
+    Object.keys(task).forEach(key => {
+      if (task[key] === undefined) {
+        delete task[key];
+      }
+    });
+
+    console.log('Creating new task:', task);
+
+    try {
+      await set(newTaskRef, task);
+      console.log('Successfully created task');
+      return { ...task, id: newTaskRef.key! };
+    } catch (error) {
+      console.error('Error creating task:', error);
+      throw error;
+    }
   };
 
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
@@ -74,33 +89,40 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
     if (!user) throw new Error('User not authenticated');
 
     const taskRef = ref(db, `tasks/${user.uid}/${taskId}`);
-    // Prepare updates for Firebase (timestamps)
-    const updates_ = {
+    
+    // Convert any Date objects to timestamps for Firebase
+    const firebaseUpdates = {
       ...updates,
-      dueDate: updates.dueDate ? updates.dueDate.getTime() : undefined,
-      completed: updates.completed !== undefined ? updates.completed : undefined,
-      completedAt: updates.completedAt !== undefined ? updates.completedAt : undefined,
+      dueDate: updates.dueDate instanceof Date ? updates.dueDate.getTime() : updates.dueDate,
+      completed: updates.completed,
+      completedAt: updates.completed ? Date.now() : null,
       updatedAt: Date.now(),
     };
 
-    // Prepare updates for local state (keeping Date objects)
-    const localUpdates = {
-      ...updates,
-      updatedAt: Date.now(),
-    };
+    // Remove any undefined values as Firebase doesn't accept them
+    Object.keys(firebaseUpdates).forEach(key => {
+      if ((firebaseUpdates as any)[key] === undefined) {
+        delete (firebaseUpdates as any)[key];
+      }
+    });
+
+    console.log('Updating task in Firebase:', { taskId, updates: firebaseUpdates });
 
     // Update local state
-    const currentTask = tasks.find(t => t.id === taskId);
-    if (currentTask) {
-      setTasks(tasks.map(t => 
-        t.id === taskId 
-          ? { ...t, ...localUpdates }
-          : t
-      ));
-    }
+    setTasks(prevTasks => 
+      prevTasks.map(t => 
+        t.id === taskId ? { ...t, ...updates } : t
+      )
+    );
 
-    await update(taskRef, updates_);
-    return updates_;
+    try {
+      await update(taskRef, firebaseUpdates);
+      console.log('Successfully updated task in Firebase');
+    } catch (error) {
+      console.error('Error updating task in Firebase:', error);
+      throw error;
+    }
+    return updates;
   };
 
   const deleteTask = async (taskId: string) => {
@@ -113,13 +135,18 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
 
   const toggleTaskCompletion = async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
+    console.log('Toggling task completion:', { taskId, currentTask: task });
+    
     if (task) {
+      console.log('Current completion status:', task.completed, 'Changing to:', !task.completed);
       await updateTask(taskId, { 
-        completed: !task.completed,
-        completedAt: !task.completed ? Date.now() : undefined
+        completed: !task.completed
       });
+      console.log('Task completion toggle completed');
+    } else {
+      console.warn('Task not found:', taskId);
     }
-  };
+  }
 
   const filteredTasks = filterTasks(tasks, filter);
 

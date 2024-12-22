@@ -7,7 +7,9 @@ export const filterTasks = (tasks: Task[], filter: TaskFilter): Task[] => {
       task.title.toLowerCase().includes(filter.searchQuery.toLowerCase()) ||
       (task.description?.toLowerCase() || '').includes(filter.searchQuery.toLowerCase());
 
-    const matchesCategory = !filter.category || filter.category === 'All' || task.category === filter.category;
+    const matchesCategory = !filter.category || 
+      filter.category === 'All' || 
+      task.category === filter.category;
 
     const matchesPriority = !filter.priority || 
       filter.priority === 'All' || 
@@ -32,6 +34,18 @@ export const getPriorityColor = (priority: TaskPriority): string => {
     default:
       return '#8E8E93';  // Gray
   }
+};
+
+export const isOverdue = (task: Task): boolean => {
+  if (!task.dueDate || task.completed) return false;
+  const dueDate = new Date(task.dueDate);
+  const today = new Date();
+  
+  // Set both dates to the start of their respective days for comparison
+  dueDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  
+  return today.getTime() > dueDate.getTime();
 };
 
 export const sortTasks = (tasks: Task[]): Task[] => {

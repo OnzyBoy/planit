@@ -3,6 +3,7 @@ import { Text, Surface, ProgressBar, List, useTheme as usePaperTheme } from 'rea
 import { useTheme } from '../hooks/useTheme';
 import { useTasks } from '../hooks/useTasks';
 import { Task } from '../types';
+import { isOverdue } from '../utils/taskUtils';
 
 export default function StatsScreen() {
   const { theme } = useTheme();
@@ -12,7 +13,8 @@ export default function StatsScreen() {
   // Calculate statistics
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(task => task.completed).length;
-  const completionRate = totalTasks > 0 ? completedTasks / totalTasks : 0;
+  const overdueTasks = tasks.filter(task => isOverdue(task)).length;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) / 100 : 0;
 
   // Calculate priority distribution
   const priorityStats = tasks.reduce((acc: Record<string, number>, task) => {
@@ -31,6 +33,28 @@ export default function StatsScreen() {
           <Text style={[styles.statsLabel, { color: theme.colors.onSurface }]}> / {totalTasks} Tasks Completed</Text>
         </View>
         <ProgressBar progress={completionRate} color={paperTheme.colors.primary} style={styles.progressBar} />
+      </Surface>
+
+      {/* Task Status */}
+      <Surface style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Task Status</Text>
+        <List.Section>
+          <List.Item
+            title="Completed Tasks"
+            right={() => <Text style={{ color: theme.colors.onSurface }}>{completedTasks}</Text>}
+            left={() => <List.Icon color={paperTheme.colors.primary} icon="check-circle" />}
+          />
+          <List.Item
+            title="Overdue Tasks"
+            right={() => <Text style={{ color: paperTheme.colors.error }}>{overdueTasks}</Text>}
+            left={() => <List.Icon color={paperTheme.colors.error} icon="alert-circle" />}
+          />
+          <List.Item
+            title="Total Tasks"
+            right={() => <Text style={{ color: theme.colors.onSurface }}>{totalTasks}</Text>}
+            left={() => <List.Icon color={paperTheme.colors.secondary} icon="format-list-bulleted" />}
+          />
+        </List.Section>
       </Surface>
 
       {/* Task Distribution */}

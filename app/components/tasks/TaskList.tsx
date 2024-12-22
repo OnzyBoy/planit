@@ -1,8 +1,10 @@
 import { View, StyleSheet, FlatList, Pressable } from 'react-native';
-import { Text, Card, IconButton, Chip } from 'react-native-paper';
+import { Text, Card, IconButton, Chip, Portal, Dialog, Button } from 'react-native-paper';
 import { useTheme } from '../../hooks/useTheme';
 import { Task } from '../../types';
 import { getPriorityColor } from '../../utils/taskUtils';
+import { useState } from 'react';
+import React from 'react';
 
 const sortByDueDate = (tasks: Task[]) => {
   return tasks.sort((a, b) => {
@@ -23,6 +25,14 @@ type TaskListProps = {
 
 export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask, onEditTask, onAddSubTask }: TaskListProps) => {
   const { theme } = useTheme();
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+
+  const handleDeleteConfirm = () => {
+    if (taskToDelete) {
+      onDeleteTask(taskToDelete.id);
+      setTaskToDelete(null);
+    }
+  };
 
   const TaskItem = ({ task }: { task: Task }) => (
     <Card
@@ -46,6 +56,11 @@ export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask,
           {task.description && (
             <Text style={[styles.description, { color: theme.colors.onSurfaceVariant }]} numberOfLines={2}>
               {task.description}
+            </Text>
+          )}
+          {task.dueDate && (
+            <Text style={[styles.dueDate, { color: theme.colors.onSurfaceVariant }]}>
+              Due: {new Date(task.dueDate).toLocaleDateString()}
             </Text>
           )}
           <View style={styles.taskMeta}>
@@ -77,7 +92,7 @@ export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask,
               <IconButton
                 icon="delete"
                 size={20}
-                onPress={() => onDeleteTask(task.id)}
+                onPress={() => setTaskToDelete(task)}
                 iconColor={theme.colors.error}
               />
             </View>
@@ -88,13 +103,33 @@ export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask,
   );
 
   return (
-    <FlatList
-      data={sortByDueDate(tasks)}
-      renderItem={({ item }) => <TaskItem task={item} />}
-      keyExtractor={item => item.id}
-      style={styles.taskList}
-      contentContainerStyle={styles.taskListContent}
-    />
+    <>
+      <FlatList
+        data={sortByDueDate(tasks)}
+        renderItem={({ item }) => <TaskItem task={item} />}
+        keyExtractor={item => item.id}
+        style={styles.taskList}
+        contentContainerStyle={styles.taskListContent}
+      />
+
+      <Portal>
+        <Dialog 
+          visible={taskToDelete !== null} 
+          onDismiss={() => setTaskToDelete(null)}
+          style={{ borderRadius: 8 }}
+        >
+          <Dialog.Title>Delete Task</Dialog.Title>
+          <Dialog.Content>
+            <Text>Are you sure you want to delete "{taskToDelete?.title}"?</Text>
+            <Text style={{ marginTop: 8, color: theme.colors.error }}>This action cannot be undone.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setTaskToDelete(null)}>Cancel</Button>
+            <Button onPress={handleDeleteConfirm} textColor={theme.colors.error}>Delete</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+    </>
   );
 };
 
@@ -146,5 +181,10 @@ const styles = StyleSheet.create({
   iconContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  dueDate: {
+    fontSize: 14,
+    marginVertical: 4,
+    fontWeight: '500',
   },
 });

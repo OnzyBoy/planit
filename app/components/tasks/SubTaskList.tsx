@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, ScrollView } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, FlatList, ScrollView, TextInput as RNTextInput } from 'react-native';
 import { Text, Modal, Portal, Button, TextInput, IconButton } from 'react-native-paper';
 import { Task } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
@@ -13,12 +13,23 @@ interface SubTaskListProps {
 
 export const SubTaskList: React.FC<SubTaskListProps> = ({ visible, onDismiss, onSave, task }) => {
   const { theme } = useTheme();
-  const [subTaskTitle, setSubTaskTitle] = useState('');
+  const [subTaskValue, setSubTaskValue] = useState('');
+  const inputRef = useRef<RNTextInput>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setSubTaskValue('');
+    }
+  }, [visible]);
 
   const handleSave = () => {
-    if (subTaskTitle.trim()) {
-      onSave(subTaskTitle);
-      setSubTaskTitle('');
+    if (subTaskValue.trim()) {
+      onSave(subTaskValue);
+      setSubTaskValue('');
+      // Clear the input after saving
+      if (inputRef.current) {
+        inputRef.current.clear();
+      }
     }
   };
 
@@ -42,13 +53,25 @@ export const SubTaskList: React.FC<SubTaskListProps> = ({ visible, onDismiss, on
           />
         </ScrollView>
         <TextInput
-          label="New Subtask"
-          value={subTaskTitle}
-          onChangeText={setSubTaskTitle}
-          style={styles.input}
-          theme={{ colors: { text: theme.colors.onSurface, primary: theme.colors.primary } }}
+          ref={inputRef}
+          placeholder="New Subtask"
+          placeholderTextColor={theme.colors.onSurfaceVariant}
+          defaultValue=""
+          onChangeText={setSubTaskValue}
+          style={[
+            styles.input,
+            { 
+              backgroundColor: theme.colors.surfaceVariant,
+              color: theme.colors.onSurface
+            }
+          ]}
         />
-        <Button mode="contained" onPress={handleSave} style={styles.saveButton} color={theme.colors.primary}>
+        <Button 
+          mode="contained" 
+          onPress={handleSave} 
+          style={styles.saveButton} 
+          disabled={!subTaskValue.trim()}
+        >
           Add Subtask
         </Button>
       </Modal>
@@ -91,6 +114,9 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 16,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   saveButton: {
     marginTop: 16,

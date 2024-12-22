@@ -55,7 +55,18 @@ export default function TasksScreen() {
 
   const handleSaveSubTask = (subTaskTitle: string) => {
     if (!taskForSubTask) return;
-    const updatedSubTasks = [...(taskForSubTask.subTasks || []), { id: String(Date.now()), title: subTaskTitle }];
+    const newSubTask: Task = {
+      id: String(Date.now()),
+      title: subTaskTitle,
+      description: '',
+      category: taskForSubTask.category,
+      priority: taskForSubTask.priority,
+      completed: false,
+      userId: taskForSubTask.userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    const updatedSubTasks = [...(taskForSubTask.subTasks || []), newSubTask];
     updateTask(taskForSubTask.id, { subTasks: updatedSubTasks });
     setSubTaskModalVisible(false);
   };
@@ -126,7 +137,7 @@ export default function TasksScreen() {
         }}
       />
 
-      <TaskForm
+<TaskForm
         visible={modalVisible}
         onDismiss={() => {
           setModalVisible(false);

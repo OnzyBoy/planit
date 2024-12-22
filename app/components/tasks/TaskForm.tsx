@@ -1,7 +1,6 @@
-import React from 'react';
-import { View, StyleSheet, TextInput, Platform, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, TextInput, Platform, ScrollView, Pressable } from 'react-native';
 import { Text, Button, Chip, Portal, Modal, Surface, IconButton } from 'react-native-paper';
-import { useState } from 'react';
 import { useTheme } from '../../hooks/useTheme';
 import { Task, TaskCategory, TaskPriority } from '../../types';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -20,29 +19,50 @@ type TaskFormProps = {
 
 export const TaskForm = React.memo(({ visible, onDismiss, onSave, initialTask }: TaskFormProps) => {
   const { theme } = useTheme();
-  const [title, setTitle] = useState(initialTask?.title || '');
-  const [description, setDescription] = useState(initialTask?.description || '');
+  const titleRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
+  const [titleValue, setTitleValue] = useState(initialTask?.title || '');
+  const [descriptionValue, setDescriptionValue] = useState(initialTask?.description || '');
   const [category, setCategory] = useState<TaskCategory>(initialTask?.category || 'Personal');
   const [priority, setPriority] = useState<TaskPriority>(initialTask?.priority || 'Medium');
   const [dueDate, setDueDate] = useState<Date | undefined>(initialTask?.dueDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  useEffect(() => {
+    if (visible) {
+      setTitleValue(initialTask?.title || '');
+      setDescriptionValue(initialTask?.description || '');
+      setCategory(initialTask?.category || 'Personal');
+      setPriority(initialTask?.priority || 'Medium');
+      setDueDate(initialTask?.dueDate);
+    }
+  }, [visible, initialTask]);
+
   const handleSave = React.useCallback(() => {
-    if (!title.trim()) return;
+    if (!titleValue.trim()) return;
+    
     if (dueDate && dueDate < today) {
       alert('Due date cannot be in the past. Please select a valid date.');
       return;
     }
+
     onSave({
-      title,
-      description,
+      title: titleValue,
+      description: descriptionValue,
       category,
       priority,
       completed: false,
       dueDate,
     });
     onDismiss();
-  }, [title, description, category, priority, dueDate, onSave, onDismiss]);
+  }, [titleValue, descriptionValue, category, priority, dueDate, onSave, onDismiss]);
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDueDate(selectedDate);
+    }
+  };
 
   return (
     <Portal>
@@ -64,14 +84,15 @@ export const TaskForm = React.memo(({ visible, onDismiss, onSave, initialTask }:
           <Surface style={[styles.inputContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
             <MaterialIcons name="title" size={24} color={theme.colors.onSurfaceVariant} style={styles.icon} />
             <TextInput
+              ref={titleRef}
               placeholder="Task Title"
               placeholderTextColor={theme.colors.onSurfaceVariant}
-              value={title}
-              onChangeText={setTitle}
+              defaultValue={titleValue}
+              onChangeText={setTitleValue}
               style={[
-                styles.input, 
+                styles.input,
                 { 
-                  color: theme.colors.onSurface, 
+                  color: theme.colors.onSurface,
                   backgroundColor: 'transparent'
                 }
               ]}
@@ -81,14 +102,45 @@ export const TaskForm = React.memo(({ visible, onDismiss, onSave, initialTask }:
           <Surface style={[styles.inputContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
             <MaterialIcons name="description" size={24} color={theme.colors.onSurfaceVariant} style={styles.icon} />
             <TextInput
+              ref={descriptionRef}
               placeholder="Description"
               placeholderTextColor={theme.colors.onSurfaceVariant}
-              value={description}
-              onChangeText={setDescription}
+              defaultValue={descriptionValue}
+              onChangeText={setDescriptionValue}
+              style={[
+                styles.input,
+                { 
+                  color: theme.colors.onSurface,
+                  backgroundColor: 'transparent',
+                  minHeight: 100
+                }
+              ]}
               multiline
-              style={[styles.input, { color: theme.colors.onSurface }]}
             />
           </Surface>
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Due Date</Text>
+            <Pressable 
+              onPress={() => setShowDatePicker(true)}
+              style={[styles.dateButton, { backgroundColor: theme.colors.surfaceVariant }]}
+            >
+              <Text style={{ color: theme.colors.onSurface }}>
+                {dueDate ? dueDate.toLocaleDateString() : 'Set Due Date'}
+              </Text>
+              <MaterialIcons name="calendar-today" size={24} color={theme.colors.onSurface} />
+            </Pressable>
+          </View>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={dueDate || new Date()}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              minimumDate={today}
+            />
+          )}
 
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Category</Text>
@@ -122,27 +174,6 @@ export const TaskForm = React.memo(({ visible, onDismiss, onSave, initialTask }:
               ))}
             </View>
           </View>
-
-          <Button 
-            onPress={() => setShowDatePicker(true)} 
-            mode="outlined" 
-            style={styles.dateButton}
-            icon="calendar"
-          >
-            {dueDate ? dueDate.toLocaleDateString() : 'Set Due Date'}
-          </Button>
-
-          {showDatePicker && (
-            <DateTimePicker
-              value={dueDate || today}
-              mode="date"
-              minimumDate={today}
-              onChange={(event, selectedDate) => {
-                setShowDatePicker(false);
-                if (selectedDate) setDueDate(selectedDate);
-              }}
-            />
-          )}
 
           <Button 
             onPress={handleSave} 
@@ -226,7 +257,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   dateButton: {
-    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
   },
   saveButton: {
     marginTop: 8,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getDatabase, ref, set, push, remove, update, onValue, off } from 'firebase/database';
+import { getDatabase, ref, set, push, remove, update, get } from 'firebase/database';
 import { app, auth } from '../services/firebase';
 import { Task, TaskFilter } from '../types';
 import { filterTasks, sortTasks } from '../utils/taskUtils';
@@ -13,6 +13,10 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
   const [filter, setFilter] = useState<TaskFilter>(initialFilter);
 
   useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
     const user = auth.currentUser;
     if (!user) {
       setError('User not authenticated');
@@ -20,39 +24,30 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
       return;
     }
 
-    const tasksRef = ref(db, `tasks/${user.uid}`);
-    setLoading(true);
-
-    const handleSnapshot = (snapshot: any) => {
-      try {
-        const tasks: Task[] = [];
-        snapshot.forEach((childSnapshot: any) => {
-          const task = childSnapshot.val();
-          tasks.push({
-            ...task,
-            id: childSnapshot.key,
-            dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
-          });
+    try {
+      setLoading(true);
+      const tasksRef = ref(db, `tasks/${user.uid}`);
+      const snapshot = await get(tasksRef);
+      const tasks: Task[] = [];
+      
+      snapshot.forEach((childSnapshot: any) => {
+        const task = childSnapshot.val();
+        tasks.push({
+          ...task,
+          id: childSnapshot.key,
+          dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
         });
-        setTasks(sortTasks(tasks));
-        setError(null);
-      } catch (err) {
-        setError('Error loading tasks');
-        console.error('Error in task snapshot:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const handleError = (err: Error) => {
+      });
+      
+      setTasks(sortTasks(tasks));
+      setError(null);
+    } catch (err) {
       setError('Error loading tasks');
+      console.error('Error loading tasks:', err);
+    } finally {
       setLoading(false);
-      console.error('Database error:', err);
-    };
-
-    onValue(tasksRef, handleSnapshot, handleError);
-    return () => off(tasksRef);
-  }, []);
+    }
+  };
 
   const createTask = async (taskData: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     const user = auth.currentUser;
@@ -64,13 +59,14 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
 
     const task: Omit<Task, 'id'> = {
       ...taskData,
-      dueDate: taskData.dueDate,
+      dueDate: taskData.dueDate || undefined,
       userId: user.uid,
       createdAt: now,
       updatedAt: now,
     };
 
     await set(newTaskRef, task);
+    await loadTasks(); 
     return { ...task, id: newTaskRef.key! };
   };
 
@@ -81,9 +77,11 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
     const taskRef = ref(db, `tasks/${user.uid}/${taskId}`);
     const updates_ = {
       ...updates,
+      dueDate: updates.dueDate ? updates.dueDate.getTime() : undefined,
       updatedAt: Date.now(),
     };
     await update(taskRef, updates_);
+    await loadTasks(); 
     return updates_;
   };
 
@@ -93,6 +91,7 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
 
     const taskRef = ref(db, `tasks/${user.uid}/${taskId}`);
     await remove(taskRef);
+    await loadTasks(); 
   };
 
   const toggleTaskCompletion = async (taskId: string) => {

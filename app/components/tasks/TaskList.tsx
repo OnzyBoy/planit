@@ -1,9 +1,9 @@
-import { View, StyleSheet, FlatList, Pressable } from 'react-native';
-import { Text, Card, IconButton, Chip, Portal, Dialog, Button } from 'react-native-paper';
+import { View, StyleSheet, FlatList, Pressable, Animated } from 'react-native';
+import { Text, Card, IconButton, Chip, Portal, Dialog, Button, Checkbox, MD2Colors } from 'react-native-paper';
 import { useTheme } from '../../hooks/useTheme';
 import { Task } from '../../types';
 import { getPriorityColor } from '../../utils/taskUtils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import React from 'react';
 
 const sortByDueDate = (tasks: Task[]) => {
@@ -26,6 +26,7 @@ type TaskListProps = {
 export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask, onEditTask, onAddSubTask }: TaskListProps) => {
   const { theme } = useTheme();
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [taskToComplete, setTaskToComplete] = useState<Task | null>(null);
 
   const handleDeleteConfirm = () => {
     if (taskToDelete) {
@@ -34,73 +35,144 @@ export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask,
     }
   };
 
-  const TaskItem = ({ task }: { task: Task }) => (
-    <Card
-      style={[styles.taskCard, { backgroundColor: theme.colors.surface }]}
-      mode="outlined"
-      onPress={() => onTaskPress(task)}
-    >
-      <Card.Content style={styles.taskContent}>
-        <View style={styles.taskHeader}>
-          <Text
-            style={[
-              styles.taskTitle,
-              { color: theme.colors.onSurface },
-              task.completed && styles.completedTask,
-            ]}
-          >
-            {task.title}
-          </Text>
-        </View>
-        <View style={styles.taskBody}>
-          {task.description && (
-            <Text style={[styles.description, { color: theme.colors.onSurfaceVariant }]} numberOfLines={2}>
-              {task.description}
-            </Text>
-          )}
-          {task.dueDate && (
-            <Text style={[styles.dueDate, { color: theme.colors.onSurfaceVariant }]}>
-              Due: {new Date(task.dueDate).toLocaleDateString()}
-            </Text>
-          )}
-          <View style={styles.taskMeta}>
-            <Chip
-              style={[styles.categoryChip, { backgroundColor: theme.colors.primaryContainer }]}
-              textStyle={{ color: theme.colors.onPrimaryContainer }}
-            >
-              {task.category}
-            </Chip>
-            <Chip
-              style={[styles.priorityChip, { backgroundColor: getPriorityColor(task.priority) }]}
-              textStyle={{ color: '#FFFFFF' }}
-            >
-              {task.priority}
-            </Chip>
-            <View style={styles.iconContainer}>
-              <IconButton
-                icon="pencil"
-                size={20}
-                onPress={() => onEditTask(task)}
-                iconColor={theme.colors.primary}
-              />
-              <IconButton
-                icon="plus"
-                size={20}
-                onPress={() => onAddSubTask(task)}
-                iconColor={theme.colors.primary}
-              />
-              <IconButton
-                icon="delete"
-                size={20}
-                onPress={() => setTaskToDelete(task)}
-                iconColor={theme.colors.error}
-              />
+  const handleCompleteConfirm = () => {
+    if (taskToComplete) {
+      onToggleCompletion(taskToComplete.id);
+      setTaskToComplete(null);
+    }
+  };
+
+  const TaskItem = ({ task }: { task: Task }) => {
+    const backgroundColorAnim = React.useRef(new Animated.Value(0)).current;
+    const checkmarkOpacity = React.useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      if (task.completed) {
+        Animated.parallel([
+          Animated.timing(backgroundColorAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: false,
+          }),
+          Animated.timing(checkmarkOpacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        Animated.parallel([
+          Animated.timing(backgroundColorAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+          }),
+          Animated.timing(checkmarkOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    }, [task.completed]);
+
+    const backgroundColor = backgroundColorAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [theme.colors.surface, `${theme.colors.primary}10`]
+    });
+
+    return (
+      <Animated.View style={{ backgroundColor }}>
+        <Card
+          style={[
+            styles.taskCard,
+            task.completed && styles.completedTaskCard
+          ]}
+          mode="outlined"
+          onPress={() => onTaskPress(task)}
+        >
+          <Card.Content style={styles.taskContent}>
+            <View style={styles.taskHeader}>
+              <View style={styles.titleContainer}>
+                <Checkbox.Android
+                  status={task.completed ? 'checked' : 'unchecked'}
+                  onPress={() => setTaskToComplete(task)}
+                  color={theme.colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.taskTitle,
+                    { color: theme.colors.onSurface },
+                  ]}
+                >
+                  {task.title}
+                </Text>
+                {task.completed && (
+                  <Animated.View style={[styles.checkmark, { opacity: checkmarkOpacity }]}>
+                    <IconButton
+                      icon="check-circle"
+                      iconColor={theme.colors.primary}
+                      size={24}
+                    />
+                  </Animated.View>
+                )}
+              </View>
             </View>
-          </View>
-        </View>
-      </Card.Content>
-    </Card>
-  );
+            <View style={styles.taskBody}>
+              {task.description && (
+                <Text style={[styles.description, { color: theme.colors.onSurfaceVariant }]} numberOfLines={2}>
+                  {task.description}
+                </Text>
+              )}
+              {task.dueDate && (
+                <Text style={[styles.dueDate, { color: theme.colors.onSurfaceVariant }]}>
+                  Due: {new Date(task.dueDate).toLocaleDateString()}
+                </Text>
+              )}
+              <View style={styles.taskMeta}>
+                <Chip
+                  style={[styles.categoryChip, { backgroundColor: theme.colors.primaryContainer }]}
+                  textStyle={{ color: theme.colors.onPrimaryContainer }}
+                >
+                  {task.category}
+                </Chip>
+                <Chip
+                  key={task.priority}
+                  style={[
+                    styles.priorityChip,
+                    { backgroundColor: getPriorityColor(task.priority) + '20' }  // Adding 20% opacity
+                  ]}
+                  textStyle={{ color: getPriorityColor(task.priority) }}
+                >
+                  {task.priority}
+                </Chip>
+                <View style={styles.iconContainer}>
+                  <IconButton
+                    icon="pencil"
+                    size={20}
+                    onPress={() => onEditTask(task)}
+                    iconColor={theme.colors.primary}
+                  />
+                  <IconButton
+                    icon="plus"
+                    size={20}
+                    onPress={() => onAddSubTask(task)}
+                    iconColor={theme.colors.primary}
+                  />
+                  <IconButton
+                    icon="delete"
+                    size={20}
+                    onPress={() => setTaskToDelete(task)}
+                    iconColor={theme.colors.error}
+                  />
+                </View>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+      </Animated.View>
+    );
+  };
 
   return (
     <>
@@ -112,20 +184,38 @@ export const TaskList = ({ tasks, onTaskPress, onToggleCompletion, onDeleteTask,
         contentContainerStyle={styles.taskListContent}
       />
 
+      {/* Delete Confirmation Dialog */}
       <Portal>
         <Dialog 
-          visible={taskToDelete !== null} 
+          visible={!!taskToDelete} 
           onDismiss={() => setTaskToDelete(null)}
-          style={{ borderRadius: 8 }}
+          style={styles.dialog}
         >
           <Dialog.Title>Delete Task</Dialog.Title>
           <Dialog.Content>
-            <Text>Are you sure you want to delete "{taskToDelete?.title}"?</Text>
-            <Text style={{ marginTop: 8, color: theme.colors.error }}>This action cannot be undone.</Text>
+            <Text variant="bodyMedium">Are you sure you want to delete this task?</Text>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setTaskToDelete(null)}>Cancel</Button>
-            <Button onPress={handleDeleteConfirm} textColor={theme.colors.error}>Delete</Button>
+            <Button onPress={handleDeleteConfirm}>Delete</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Complete Confirmation Dialog */}
+      <Portal>
+        <Dialog 
+          visible={!!taskToComplete} 
+          onDismiss={() => setTaskToComplete(null)}
+          style={styles.dialog}
+        >
+          <Dialog.Title>Complete Task</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">Mark this task as completed?</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setTaskToComplete(null)}>Cancel</Button>
+            <Button onPress={handleCompleteConfirm}>Complete</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -153,6 +243,8 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    flex: 1,
+    marginLeft: 8,
   },
   taskBody: {
     flexDirection: 'column',
@@ -164,6 +256,9 @@ const styles = StyleSheet.create({
   completedTask: {
     textDecorationLine: 'line-through',
     opacity: 0.7,
+  },
+  completedTaskCard: {
+    opacity: 0.8,
   },
   taskMeta: {
     flexDirection: 'row',
@@ -186,5 +281,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginVertical: 4,
     fontWeight: '500',
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    position: 'relative',
+  },
+  checkmark: {
+    position: 'absolute',
+    right: 8,
+  },
+  dialog: {
+    borderRadius: 15, // Less rounded corners
   },
 });

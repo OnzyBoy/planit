@@ -23,8 +23,8 @@ export const TaskForm = React.memo(({ visible, onDismiss, onSave, initialTask }:
   const descriptionRef = useRef<TextInput>(null);
   const [titleValue, setTitleValue] = useState(initialTask?.title || '');
   const [descriptionValue, setDescriptionValue] = useState(initialTask?.description || '');
-  const [category, setCategory] = useState<TaskCategory>(initialTask?.category || 'Personal');
-  const [priority, setPriority] = useState<TaskPriority>(initialTask?.priority || 'Medium');
+  const [category, setCategory] = useState<TaskCategory>(initialTask?.category || TaskCategory.PERSONAL);
+  const [priority, setPriority] = useState<TaskPriority>(initialTask?.priority || TaskPriority.MEDIUM);
   const [dueDate, setDueDate] = useState<Date | undefined>(initialTask?.dueDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -32,8 +32,8 @@ export const TaskForm = React.memo(({ visible, onDismiss, onSave, initialTask }:
     if (visible) {
       setTitleValue(initialTask?.title || '');
       setDescriptionValue(initialTask?.description || '');
-      setCategory(initialTask?.category || 'Personal');
-      setPriority(initialTask?.priority || 'Medium');
+      setCategory(initialTask?.category || TaskCategory.PERSONAL);
+      setPriority(initialTask?.priority || TaskPriority.MEDIUM);
       setDueDate(initialTask?.dueDate);
     }
   }, [visible, initialTask]);
@@ -145,14 +145,14 @@ export const TaskForm = React.memo(({ visible, onDismiss, onSave, initialTask }:
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Category</Text>
             <View style={styles.chipGroup}>
-              {(['Work', 'Personal', 'Urgent'] as const).map((cat) => (
+              {([TaskCategory.WORK, TaskCategory.PERSONAL, TaskCategory.URGENT] as const).map((cat) => (
                 <Chip
                   key={cat}
                   selected={category === cat}
                   onPress={() => setCategory(cat)}
                   style={styles.chip}
                 >
-                  {cat}
+                  {cat.toLowerCase()}
                 </Chip>
               ))}
             </View>
@@ -161,13 +161,18 @@ export const TaskForm = React.memo(({ visible, onDismiss, onSave, initialTask }:
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Priority</Text>
             <View style={styles.chipGroup}>
-              {(['High', 'Medium', 'Low'] as const).map((pri) => (
+              {[TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW].map((pri) => (
                 <Chip
                   key={pri}
                   selected={priority === pri}
                   onPress={() => setPriority(pri)}
-                  style={[styles.chip, { backgroundColor: getPriorityColor(pri) }]}
-                  textStyle={{ color: '#FFFFFF' }}
+                  style={[
+                    styles.chip,
+                    { backgroundColor: priority === pri ? getPriorityColor(pri) + '20' : undefined }
+                  ]}
+                  textStyle={{ 
+                    color: priority === pri ? getPriorityColor(pri) : theme.colors.onSurface 
+                  }}
                 >
                   {pri}
                 </Chip>

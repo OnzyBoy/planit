@@ -1,35 +1,36 @@
 import { Task, TaskFilter, TaskPriority } from '../types';
 
 export const filterTasks = (tasks: Task[], filter: TaskFilter): Task[] => {
+  console.log('Filtering tasks:', { tasks, filter }); // Debug log
   return tasks.filter(task => {
     const matchesSearch = !filter.searchQuery || 
       task.title.toLowerCase().includes(filter.searchQuery.toLowerCase()) ||
-      task.description.toLowerCase().includes(filter.searchQuery.toLowerCase());
+      (task.description?.toLowerCase() || '').includes(filter.searchQuery.toLowerCase());
 
-    const matchesCategory = !filter.category || 
-      filter.category === 'All' || 
-      task.category === filter.category;
+    const matchesCategory = !filter.category || filter.category === 'All' || task.category === filter.category;
 
     const matchesPriority = !filter.priority || 
       filter.priority === 'All' || 
       task.priority === filter.priority;
 
-    const matchesCompletion = filter.showCompleted !== undefined ? 
-      filter.showCompleted === task.completed : 
-      true;
+    const matchesCompleted = filter.completed === undefined || task.completed === filter.completed;
 
-    return matchesSearch && matchesCategory && matchesPriority && matchesCompletion;
+    const result = matchesSearch && matchesCategory && matchesPriority && matchesCompleted;
+    console.log('Task filter result:', { taskId: task.id, result, matchesSearch, matchesCategory, matchesPriority, matchesCompleted }); // Debug log
+    return result;
   });
 };
 
 export const getPriorityColor = (priority: TaskPriority): string => {
   switch (priority) {
-    case 'High':
-      return '#FF4444';
-    case 'Medium':
-      return '#FFA000';
-    case 'Low':
-      return '#4CAF50';
+    case TaskPriority.HIGH:
+      return '#FF3B30';  // Bright red
+    case TaskPriority.MEDIUM:
+      return '#FF9500';  // Orange
+    case TaskPriority.LOW:
+      return '#34C759';  // Green
+    default:
+      return '#8E8E93';  // Gray
   }
 };
 

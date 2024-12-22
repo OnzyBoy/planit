@@ -75,8 +75,8 @@ export default function TasksScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Searchbar
         placeholder="Search tasks"
-        onChangeText={(query) => setFilter({ ...filter, searchQuery: query })}
-        value={filter.searchQuery || ''}
+        onChangeText={(query) => setFilter({ ...filter, search: query })}
+        value={filter.search || ''}
         style={styles.searchBar}
       />
       
@@ -161,6 +161,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    paddingTop: 40,
   },
   centerContent: {
     justifyContent: 'center',

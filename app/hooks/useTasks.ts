@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getDatabase, ref, set, push, remove, update, get } from 'firebase/database';
+import { getDatabase, ref, set, push, remove, update, onValue, off } from 'firebase/database';
 import { app, auth } from '../services/firebase';
 import { Task, TaskFilter } from '../types';
 import { filterTasks, sortTasks } from '../utils/taskUtils';
@@ -13,10 +13,6 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
   const [filter, setFilter] = useState<TaskFilter>(initialFilter);
 
   useEffect(() => {
-    loadTasks();
-  }, []);
-
-  const loadTasks = async () => {
     const user = auth.currentUser;
     if (!user) {
       setError('User not authenticated');
@@ -24,12 +20,11 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
       return;
     }
 
-    try {
-      setLoading(true);
-      const tasksRef = ref(db, `tasks/${user.uid}`);
-      const snapshot = await get(tasksRef);
+    setLoading(true);
+    const tasksRef = ref(db, `tasks/${user.uid}`);
+    
+    const unsubscribe = onValue(tasksRef, (snapshot) => {
       const tasks: Task[] = [];
-      
       snapshot.forEach((childSnapshot: any) => {
         const task = childSnapshot.val();
         tasks.push({
@@ -41,13 +36,17 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
       
       setTasks(sortTasks(tasks));
       setError(null);
-    } catch (err) {
-      setError('Error loading tasks');
-      console.error('Error loading tasks:', err);
-    } finally {
       setLoading(false);
-    }
-  };
+    }, (error) => {
+      setError('Error loading tasks');
+      console.error('Error loading tasks:', error);
+      setLoading(false);
+    });
+
+    return () => {
+      off(tasksRef);
+    };
+  }, []);
 
   const createTask = async (taskData: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     const user = auth.currentUser;
@@ -59,6 +58,7 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
 
     const task: Omit<Task, 'id'> = {
       ...taskData,
+      completed: false, // Initialize completed state
       dueDate: taskData.dueDate || undefined,
       userId: user.uid,
       createdAt: now,
@@ -66,7 +66,6 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
     };
 
     await set(newTaskRef, task);
-    await loadTasks(); 
     return { ...task, id: newTaskRef.key! };
   };
 
@@ -75,13 +74,32 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
     if (!user) throw new Error('User not authenticated');
 
     const taskRef = ref(db, `tasks/${user.uid}/${taskId}`);
+    // Prepare updates for Firebase (timestamps)
     const updates_ = {
       ...updates,
       dueDate: updates.dueDate ? updates.dueDate.getTime() : undefined,
+      completed: updates.completed !== undefined ? updates.completed : undefined,
+      completedAt: updates.completedAt !== undefined ? updates.completedAt : undefined,
       updatedAt: Date.now(),
     };
+
+    // Prepare updates for local state (keeping Date objects)
+    const localUpdates = {
+      ...updates,
+      updatedAt: Date.now(),
+    };
+
+    // Update local state
+    const currentTask = tasks.find(t => t.id === taskId);
+    if (currentTask) {
+      setTasks(tasks.map(t => 
+        t.id === taskId 
+          ? { ...t, ...localUpdates }
+          : t
+      ));
+    }
+
     await update(taskRef, updates_);
-    await loadTasks(); 
     return updates_;
   };
 
@@ -91,13 +109,15 @@ export const useTasks = (initialFilter: TaskFilter = {}) => {
 
     const taskRef = ref(db, `tasks/${user.uid}/${taskId}`);
     await remove(taskRef);
-    await loadTasks(); 
   };
 
   const toggleTaskCompletion = async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
-      await updateTask(taskId, { completed: !task.completed });
+      await updateTask(taskId, { 
+        completed: !task.completed,
+        completedAt: !task.completed ? Date.now() : undefined
+      });
     }
   };
 

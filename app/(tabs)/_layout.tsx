@@ -28,7 +28,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Tasks',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <MaterialIcons name="list" size={size} color={color} />
           ),
         }}
@@ -37,7 +37,7 @@ export default function TabsLayout() {
         name="stats"
         options={{
           title: 'Stats',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <MaterialIcons name="bar-chart" size={size} color={color} />
           ),
         }}
@@ -46,7 +46,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <MaterialIcons name="person" size={size} color={color} />
           ),
         }}
